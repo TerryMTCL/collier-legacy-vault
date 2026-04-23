@@ -1,0 +1,28 @@
+name = "collier-legacy-vault"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".vercel/output/static"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "collier-legacy-vault-db"
+database_id = "YOUR_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "VAULT_FILES"
+bucket_name = "collier-legacy-vault-files"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+# Environment variables (set via Cloudflare dashboard or wrangler secrets)
+# wrangler secret put JWT_SECRET
+# wrangler secret put ENCRYPTION_KEY
+# wrangler secret put RESEND_API_KEY
+# wrangler secret put TELEGRAM_BOT_TOKEN
+
+[vars]
+APP_URL = "https://jcollier-legacy.com"
+FROM_EMAIL = "noreply@jcollier-legacy.com"
+NODE_ENV = "production"
