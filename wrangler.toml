@@ -13,8 +13,7 @@ migrations_dir = "migrations"
 binding = "VAULT_FILES"
 bucket_name = "collier-legacy-vault-files"
 
-[triggers]
-crons = ["*/5 * * * *"]
+# Cron triggers not supported in Pages - use external cron to hit /api/cron/check-switches
 
 # Environment variables (set via Cloudflare dashboard or wrangler secrets)
 # wrangler secret put JWT_SECRET
