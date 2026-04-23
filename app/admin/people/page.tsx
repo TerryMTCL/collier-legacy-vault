@@ -223,12 +223,17 @@ export default function PeoplePage() {
     setSaving(true)
     setError(null)
 
-    const payload = {
+    // Only include questions in payload if at least one has BOTH question text AND a new answer
+    // This prevents wiping existing challenge questions when just editing the letter
+    const questionsWithContent = formQuestions.filter((q) => q.question.trim() && q.answer.trim())
+    const payload: Record<string, unknown> = {
       name: formName,
       email: formEmail,
       access_tier: formTier,
       personal_email_message: formMessage || null,
-      questions: formQuestions.filter((q) => q.question.trim()),
+    }
+    if (questionsWithContent.length > 0) {
+      payload.questions = questionsWithContent
     }
 
     try {
