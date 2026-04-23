@@ -167,3 +167,4 @@ The vault is pre-seeded with 23 categories:
 **Personal (12):** Personal Identification, Emergency Contacts, Legal Documents, Financial Accounts, Insurance Policies, Property & Assets, Debts & Liabilities, Digital Assets & Passwords, Tax Information, Funeral & Burial Wishes, Monthly Bills & Subscriptions, Phone & Device Access
 
 **Business/Full (11):** MTCL Business Overview, Business Succession Plan, Business Financial Accounts, Business Insurance, Client Database Access, Vehicle Fleet & GPS, Vendor Accounts, Website & Hosting, Technology Infrastructure, Haven Lighting, ServiceVault Pro
+# Trigger rebuild
