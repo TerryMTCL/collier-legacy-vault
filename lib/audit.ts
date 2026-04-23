@@ -23,6 +23,10 @@ export type AuditEventType =
   | 'vault_category_deleted'
   | 'access_granted'
   | 'cron_check'
+  | 'video_uploaded'
+  | 'video_deleted'
+  | 'file_uploaded'
+  | 'file_deleted'
 
 export interface LogEventOptions {
   personId?: string

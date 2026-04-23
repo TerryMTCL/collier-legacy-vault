@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, FormEvent } from 'react'
+import { useState, useEffect, useRef, FormEvent } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 
 interface VaultCategory {
@@ -199,6 +199,134 @@ const fieldClass =
   'w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30'
 const labelClass = 'block text-sm font-medium text-gray-400 mb-1.5'
 
+function FileUploadZone({
+  entryId,
+  files,
+  uploading,
+  progress,
+  error,
+  fileInputRef,
+  onUpload,
+  onDelete,
+}: {
+  entryId: string | null
+  files: { key: string; filename: string }[]
+  uploading: boolean
+  progress: number
+  error: string | null
+  fileInputRef: React.RefObject<HTMLInputElement | null>
+  onUpload: (file: File) => void
+  onDelete: (filename: string) => void
+}) {
+  return (
+    <div className="space-y-3">
+      {/* Uploaded files list */}
+      {files.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-gray-500">Uploaded files ({files.length}/5)</p>
+          {files.map((f) => (
+            <div
+              key={f.key}
+              className="flex items-center justify-between bg-gray-800/60 border border-gray-700/50 rounded-lg px-3 py-2"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <svg className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="text-xs text-gray-300 truncate font-mono">{f.filename}</span>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                {entryId && (
+                  <a
+                    href={`/api/vault/files/${entryId}/${encodeURIComponent(f.filename)}`}
+                    download={f.filename}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                    title="Download"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onDelete(f.filename)}
+                  className="text-red-500 hover:text-red-400 transition-colors"
+                  title="Delete"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Upload zone — only show if under limit */}
+      {files.length < 5 && (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) onUpload(file)
+              e.target.value = ''
+            }}
+          />
+          <div
+            className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-colors
+              ${uploading
+                ? 'border-indigo-700 bg-indigo-950/20 cursor-not-allowed'
+                : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/30'
+              }`}
+            onClick={() => !uploading && fileInputRef.current?.click()}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault()
+              if (uploading) return
+              const file = e.dataTransfer.files?.[0]
+              if (file) onUpload(file)
+            }}
+          >
+            <svg className="w-6 h-6 text-gray-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <p className="text-sm text-gray-400">
+              {uploading ? 'Uploading...' : 'Drop file here or click to browse'}
+            </p>
+            <p className="text-xs text-gray-600 mt-1">Max 100MB per file · Up to 5 files per entry</p>
+          </div>
+
+          {uploading && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span>Uploading...</span>
+                <span>{progress}%</span>
+              </div>
+              <div className="w-full bg-gray-800 rounded-full h-1.5">
+                <div
+                  className="bg-indigo-500 h-1.5 rounded-full transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {error && (
+        <p className="text-xs text-red-400 bg-red-950/30 border border-red-900/50 rounded-lg px-3 py-2">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
+
 export default function VaultPage() {
   const [categories, setCategories] = useState<VaultCategory[]>([])
   const [entries, setEntries] = useState<VaultEntry[]>([])
@@ -249,6 +377,13 @@ export default function VaultPage() {
 
   // Delete confirm
   const [deleteEntry, setDeleteEntry] = useState<string | null>(null)
+
+  // File upload state (for document/file entry types)
+  const [entryFiles, setEntryFiles] = useState<{ key: string; filename: string }[]>([])
+  const [fileUploading, setFileUploading] = useState(false)
+  const [fileProgress, setFileProgress] = useState(0)
+  const [fileUploadError, setFileUploadError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function loadCategories() {
     try {
@@ -385,6 +520,8 @@ export default function VaultPage() {
     setEntryTitle('')
     setEntryType('note')
     setEntryError(null)
+    setEntryFiles([])
+    setFileUploadError(null)
     resetFormFields()
     setShowEntryModal(true)
   }
@@ -394,15 +531,26 @@ export default function VaultPage() {
     setEntryTitle(entry.title)
     setEntryType(entry.entry_type as 'note' | 'login' | 'document' | 'file')
     setEntryError(null)
+    setEntryFiles([])
+    setFileUploadError(null)
     resetFormFields()
     setEntryLoading(true)
     setShowEntryModal(true)
 
     try {
-      const res = await fetch(`/api/admin/vault/entries/${entry.id}`)
-      if (res.ok) {
-        const data = await res.json()
+      const [entryRes, filesRes] = await Promise.all([
+        fetch(`/api/admin/vault/entries/${entry.id}`),
+        (entry.entry_type === 'document' || entry.entry_type === 'file')
+          ? fetch(`/api/admin/vault/entries/${entry.id}/files`)
+          : Promise.resolve(null),
+      ])
+      if (entryRes.ok) {
+        const data = await entryRes.json()
         populateFormFromData(entry.entry_type, data.entry.data)
+      }
+      if (filesRes?.ok) {
+        const filesData = await filesRes.json()
+        setEntryFiles(filesData.files ?? [])
       }
     } catch {
       // ignore, user can re-enter
@@ -473,6 +621,66 @@ export default function VaultPage() {
       setEntryError('Something went wrong.')
     } finally {
       setEntrySaving(false)
+    }
+  }
+
+  async function handleFileUpload(file: File) {
+    if (!editingEntry) return
+    setFileUploading(true)
+    setFileProgress(0)
+    setFileUploadError(null)
+
+    return new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      const formData = new FormData()
+      formData.append('file', file)
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) setFileProgress(Math.round((e.loaded / e.total) * 100))
+      }
+
+      xhr.onload = async () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const data = JSON.parse(xhr.responseText)
+          setEntryFiles(data.files ?? [])
+          setFileUploading(false)
+          resolve()
+        } else {
+          let errMsg = 'Upload failed'
+          try { errMsg = JSON.parse(xhr.responseText).error ?? errMsg } catch {}
+          setFileUploadError(errMsg)
+          setFileUploading(false)
+          reject(new Error(errMsg))
+        }
+      }
+
+      xhr.onerror = () => {
+        setFileUploadError('Upload failed — network error')
+        setFileUploading(false)
+        reject(new Error('Network error'))
+      }
+
+      xhr.open('POST', `/api/admin/vault/entries/${editingEntry.id}/files`)
+      xhr.send(formData)
+    })
+  }
+
+  async function handleFileDelete(filename: string) {
+    if (!editingEntry) return
+    try {
+      const res = await fetch(
+        `/api/admin/vault/entries/${editingEntry.id}/files/${encodeURIComponent(filename)}`,
+        { method: 'DELETE' }
+      )
+      if (res.ok) {
+        const data = await res.json()
+        setEntryFiles(data.files ?? [])
+      } else {
+        const data = await res.json()
+        setFileUploadError(data.error ?? 'Delete failed')
+      }
+    } catch {
+      setFileUploadError('Delete failed')
     }
   }
 
@@ -856,10 +1064,16 @@ export default function VaultPage() {
                         className={`${fieldClass} resize-y`}
                       />
                     </div>
-                    <div className="border-2 border-dashed border-gray-700 rounded-lg p-5 text-center">
-                      <p className="text-sm text-gray-500">📄 File upload</p>
-                      <p className="text-xs text-gray-600 mt-1">Coming soon — files will be encrypted and stored in R2</p>
-                    </div>
+                    <FileUploadZone
+                      entryId={editingEntry?.id ?? null}
+                      files={entryFiles}
+                      uploading={fileUploading}
+                      progress={fileProgress}
+                      error={fileUploadError}
+                      fileInputRef={fileInputRef}
+                      onUpload={handleFileUpload}
+                      onDelete={handleFileDelete}
+                    />
                   </div>
                 )}
 
@@ -878,10 +1092,16 @@ export default function VaultPage() {
                         className={`${fieldClass} resize-y`}
                       />
                     </div>
-                    <div className="border-2 border-dashed border-gray-700 rounded-lg p-5 text-center">
-                      <p className="text-sm text-gray-500">📎 File upload</p>
-                      <p className="text-xs text-gray-600 mt-1">Coming soon — files will be encrypted and stored in R2</p>
-                    </div>
+                    <FileUploadZone
+                      entryId={editingEntry?.id ?? null}
+                      files={entryFiles}
+                      uploading={fileUploading}
+                      progress={fileProgress}
+                      error={fileUploadError}
+                      fileInputRef={fileInputRef}
+                      onUpload={handleFileUpload}
+                      onDelete={handleFileDelete}
+                    />
                   </div>
                 )}
               </>

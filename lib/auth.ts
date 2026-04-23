@@ -77,3 +77,51 @@ export async function requireAdmin(request: NextRequest): Promise<SessionPayload
 }
 
 export { SESSION_COOKIE, SESSION_MAX_AGE }
+
+// --- Person (recipient) session ---
+
+export const PERSON_SESSION_COOKIE = 'clv_person_session'
+
+export interface PersonSessionPayload {
+  personId: string
+  name: string
+  accessTier: 'FULL' | 'PERSONAL'
+  iat?: number
+  exp?: number
+}
+
+export async function createPersonSession(
+  payload: Omit<PersonSessionPayload, 'iat' | 'exp'>
+): Promise<string> {
+  const secret = getJWTSecret()
+  const token = await new SignJWT({ ...payload })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('30d')
+    .sign(secret)
+  return token
+}
+
+export async function verifyPersonSession(token: string): Promise<PersonSessionPayload | null> {
+  try {
+    const secret = getJWTSecret()
+    const { payload } = await jwtVerify(token, secret)
+    return payload as unknown as PersonSessionPayload
+  } catch {
+    return null
+  }
+}
+
+export async function requirePerson(
+  request: NextRequest
+): Promise<PersonSessionPayload | NextResponse> {
+  const token = request.cookies.get(PERSON_SESSION_COOKIE)?.value
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const session = await verifyPersonSession(token)
+  if (!session?.personId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  return session
+}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, FormEvent } from 'react'
+import { useState, useEffect, useRef, FormEvent } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 
 interface Person {
@@ -10,6 +10,7 @@ interface Person {
   access_tier: 'FULL' | 'PERSONAL'
   is_activated: number
   personal_email_message: string | null
+  video_url: string | null
   created_at: string
 }
 
@@ -68,6 +69,15 @@ export default function PeoplePage() {
     Array(5).fill(null).map(() => ({ ...emptyQuestion }))
   )
 
+  // Video modal state
+  const [videoModal, setVideoModal] = useState<Person | null>(null)
+  const [videoUploading, setVideoUploading] = useState(false)
+  const [videoProgress, setVideoProgress] = useState(0)
+  const [videoError, setVideoError] = useState<string | null>(null)
+  const [videoSuccess, setVideoSuccess] = useState(false)
+  const [videoDeleting, setVideoDeleting] = useState(false)
+  const videoFileRef = useRef<HTMLInputElement>(null)
+
   async function loadPeople() {
     try {
       const res = await fetch('/api/admin/people')
@@ -105,7 +115,6 @@ export default function PeoplePage() {
     setFormMessage(person.personal_email_message ?? '')
     setError(null)
 
-    // Fetch existing questions
     try {
       const res = await fetch(`/api/admin/people/${person.id}`)
       if (res.ok) {
@@ -122,6 +131,91 @@ export default function PeoplePage() {
     }
 
     setShowModal(true)
+  }
+
+  function openVideoModal(person: Person) {
+    setVideoModal(person)
+    setVideoProgress(0)
+    setVideoError(null)
+    setVideoSuccess(false)
+    setVideoUploading(false)
+    setVideoDeleting(false)
+  }
+
+  async function handleVideoUpload(file: File) {
+    if (!videoModal) return
+    setVideoUploading(true)
+    setVideoProgress(0)
+    setVideoError(null)
+    setVideoSuccess(false)
+
+    return new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      const formData = new FormData()
+      formData.append('file', file)
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          setVideoProgress(Math.round((e.loaded / e.total) * 100))
+        }
+      }
+
+      xhr.onload = async () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          setVideoSuccess(true)
+          setVideoUploading(false)
+          // Refresh people list so video_url is updated
+          await loadPeople()
+          // Update videoModal person object
+          const res = await fetch('/api/admin/people')
+          if (res.ok) {
+            const data = await res.json()
+            const updated = data.people.find((p: Person) => p.id === videoModal.id)
+            if (updated) setVideoModal(updated)
+          }
+          resolve()
+        } else {
+          let errMsg = 'Upload failed'
+          try {
+            const d = JSON.parse(xhr.responseText)
+            errMsg = d.error ?? errMsg
+          } catch {}
+          setVideoError(errMsg)
+          setVideoUploading(false)
+          reject(new Error(errMsg))
+        }
+      }
+
+      xhr.onerror = () => {
+        setVideoError('Upload failed — network error')
+        setVideoUploading(false)
+        reject(new Error('Network error'))
+      }
+
+      xhr.open('POST', `/api/admin/people/${videoModal.id}/video`)
+      xhr.send(formData)
+    })
+  }
+
+  async function handleVideoDelete() {
+    if (!videoModal) return
+    setVideoDeleting(true)
+    setVideoError(null)
+    try {
+      const res = await fetch(`/api/admin/people/${videoModal.id}/video`, { method: 'DELETE' })
+      if (res.ok) {
+        await loadPeople()
+        setVideoModal((prev) => (prev ? { ...prev, video_url: null } : null))
+        setVideoSuccess(false)
+      } else {
+        const d = await res.json()
+        setVideoError(d.error ?? 'Delete failed')
+      }
+    } catch {
+      setVideoError('Delete failed')
+    } finally {
+      setVideoDeleting(false)
+    }
   }
 
   async function handleSave(e: FormEvent) {
@@ -180,6 +274,9 @@ export default function PeoplePage() {
     }
   }
 
+  // Current video filename from R2 key
+  const videoFilename = videoModal?.video_url?.split('/').pop() ?? null
+
   return (
     <AdminLayout currentPage="people">
       <div className="p-8">
@@ -223,6 +320,7 @@ export default function PeoplePage() {
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Tier</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Video</th>
                   <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -249,8 +347,26 @@ export default function PeoplePage() {
                         {person.is_activated ? 'Activated' : 'Pending'}
                       </span>
                     </td>
+                    <td className="px-6 py-4">
+                      {person.video_url ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-green-400">
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                          Uploaded
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-600">—</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => openVideoModal(person)}
+                          className="text-xs text-purple-400 hover:text-purple-300 px-2.5 py-1 rounded-md hover:bg-purple-950/30 transition-colors"
+                        >
+                          Video
+                        </button>
                         <button
                           onClick={() => openEditModal(person)}
                           className="text-xs text-gray-400 hover:text-gray-200 px-2.5 py-1 rounded-md hover:bg-gray-800 transition-colors"
@@ -272,6 +388,143 @@ export default function PeoplePage() {
           </div>
         )}
       </div>
+
+      {/* Video Upload Modal */}
+      {videoModal && (
+        <Modal
+          title={`Video Message — ${videoModal.name}`}
+          onClose={() => setVideoModal(null)}
+        >
+          <div className="space-y-5">
+            {/* Current video preview */}
+            {(videoModal.video_url || videoSuccess) && (
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-gray-400">Current Video</p>
+                <div className="bg-black rounded-lg overflow-hidden">
+                  <video
+                    key={videoModal.video_url}
+                    controls
+                    className="w-full max-h-56"
+                    src={`/api/vault/video/${videoModal.id}`}
+                    preload="metadata"
+                  >
+                    Video preview not available.
+                  </video>
+                </div>
+                {videoFilename && (
+                  <p className="text-xs text-gray-500">
+                    File: <span className="text-gray-400 font-mono">{videoFilename}</span>
+                  </p>
+                )}
+                <button
+                  onClick={handleVideoDelete}
+                  disabled={videoDeleting}
+                  className="text-xs text-red-500 hover:text-red-400 disabled:opacity-50 flex items-center gap-1.5 transition-colors"
+                >
+                  {videoDeleting ? (
+                    <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  )}
+                  {videoDeleting ? 'Removing...' : 'Remove Video'}
+                </button>
+              </div>
+            )}
+
+            {/* Upload zone */}
+            <div>
+              <p className="text-xs font-medium text-gray-400 mb-2">
+                {videoModal.video_url ? 'Replace Video' : 'Upload Video'}
+              </p>
+              <p className="text-xs text-gray-600 mb-3">
+                Accepted: .mp4, .mov, .webm — Max 500MB
+              </p>
+
+              {/* Hidden file input */}
+              <input
+                ref={videoFileRef}
+                type="file"
+                accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) handleVideoUpload(file)
+                  e.target.value = ''
+                }}
+              />
+
+              {/* Drop zone */}
+              <div
+                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
+                  ${videoUploading
+                    ? 'border-indigo-700 bg-indigo-950/20 cursor-not-allowed'
+                    : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/30'
+                  }`}
+                onClick={() => !videoUploading && videoFileRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault() }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  if (videoUploading) return
+                  const file = e.dataTransfer.files?.[0]
+                  if (file) handleVideoUpload(file)
+                }}
+              >
+                <svg className="w-8 h-8 text-gray-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.362a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <p className="text-sm text-gray-400">
+                  {videoUploading ? 'Uploading...' : 'Drop video here or click to browse'}
+                </p>
+              </div>
+
+              {/* Progress bar */}
+              {videoUploading && (
+                <div className="mt-3 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>Uploading...</span>
+                    <span>{videoProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-800 rounded-full h-1.5">
+                    <div
+                      className="bg-indigo-500 h-1.5 rounded-full transition-all duration-300"
+                      style={{ width: `${videoProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {videoSuccess && !videoUploading && (
+                <p className="mt-3 text-xs text-green-400 flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Video uploaded successfully
+                </p>
+              )}
+            </div>
+
+            {videoError && (
+              <p className="text-sm text-red-400 bg-red-950/30 border border-red-900/50 rounded-lg px-4 py-3">
+                {videoError}
+              </p>
+            )}
+
+            <div className="pt-2">
+              <button
+                onClick={() => setVideoModal(null)}
+                className="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium rounded-lg px-4 py-2.5 text-sm transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Add/Edit Modal */}
       {showModal && (
