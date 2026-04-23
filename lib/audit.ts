@@ -1,5 +1,4 @@
 import type { D1Database } from './db'
-import { v4 as uuidv4 } from 'uuid'
 
 export type AuditEventType =
   | 'verify_name_found'
@@ -37,7 +36,7 @@ export async function logEvent(
   eventType: AuditEventType,
   options: LogEventOptions = {}
 ): Promise<void> {
-  const id = uuidv4()
+  const id = crypto.randomUUID()
   const details =
     typeof options.details === 'string'
       ? options.details

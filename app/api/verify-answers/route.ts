@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
-import { v4 as uuidv4 } from 'uuid'
+import { verifyPassword } from '@/lib/hash'
 import { getDB, queryChallengeQuestions, queryPersonById, queryFailedAttemptsForIP } from '@/lib/db'
 import { logEvent } from '@/lib/audit'
 import { sendSwitchTriggerEmail, sendToJoshTelegram, APP_URL } from './helpers'
 
-export const runtime = 'nodejs'
+export const runtime = 'edge'
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -61,7 +60,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     for (let i = 0; i < questions.length; i++) {
       const answer = answers[i]?.trim() ?? ''
       const hash = questions[i].answer_hash
-      const correct = await bcrypt.compare(answer.toLowerCase(), hash)
+      const correct = await verifyPassword(answer.toLowerCase(), hash)
       if (!correct) {
         allCorrect = false
         break
@@ -86,8 +85,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // All correct — create switch event
-    const switchId = uuidv4()
-    const cancelToken = uuidv4()
+    const switchId = crypto.randomUUID()
+    const cancelToken = crypto.randomUUID()
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 
     await db

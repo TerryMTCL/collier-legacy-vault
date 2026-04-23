@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { v4 as uuidv4 } from 'uuid'
 import { getDB, queryVaultCategories } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
 import { logEvent } from '@/lib/audit'
@@ -42,7 +41,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const db = getDB()
-    const id = uuidv4()
+    const id = crypto.randomUUID()
 
     await db
       .prepare(

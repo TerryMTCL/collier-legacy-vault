@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
+import { verifyPassword } from '@/lib/hash'
 import { getDB } from '@/lib/db'
 import { createSession, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth'
 import { logEvent } from '@/lib/audit'
 
-export const runtime = 'nodejs'
+export const runtime = 'edge'
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
-    const passwordValid = await bcrypt.compare(password, admin.password_hash)
+    const passwordValid = await verifyPassword(password, admin.password_hash)
     if (!passwordValid) {
       await logEvent(db, 'admin_login_failed', {
         ipAddress: ip,

@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
-import { v4 as uuidv4 } from 'uuid'
+import { hashPassword } from '@/lib/hash'
 import { getDB, queryPeople } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
 import { logEvent } from '@/lib/audit'
 
-export const runtime = 'nodejs'
+export const runtime = 'edge'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const authResult = await requireAdmin(request)
@@ -52,7 +51,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const db = getDB()
-    const id = uuidv4()
+    const id = crypto.randomUUID()
 
     await db
       .prepare(
@@ -67,8 +66,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i]
         if (!q.question || !q.answer) continue
-        const qId = uuidv4()
-        const answerHash = await bcrypt.hash(q.answer.trim().toLowerCase(), 10)
+        const qId = crypto.randomUUID()
+        const answerHash = await hashPassword(q.answer.trim().toLowerCase())
         await db
           .prepare(
             `INSERT INTO challenge_questions (id, person_id, question_order, question, answer_hash)

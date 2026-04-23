@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { v4 as uuidv4 } from 'uuid'
 import { getDB, queryVaultEntries } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
 import { encrypt } from '@/lib/encryption'
@@ -65,7 +64,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const dataString = typeof data === 'string' ? data : JSON.stringify(data)
     const encryptedData = await encrypt(dataString)
 
-    const id = uuidv4()
+    const id = crypto.randomUUID()
 
     await db
       .prepare(
