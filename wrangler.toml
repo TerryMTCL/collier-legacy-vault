@@ -6,7 +6,7 @@ pages_build_output_dir = ".vercel/output/static"
 [[d1_databases]]
 binding = "DB"
 database_name = "collier-legacy-vault-db"
-database_id = "YOUR_D1_DATABASE_ID"
+database_id = "6bd425f1-92af-4f55-b416-df5f14a6c3d0"
 migrations_dir = "migrations"
 
 [[r2_buckets]]
