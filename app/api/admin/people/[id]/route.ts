@@ -90,8 +90,9 @@ export async function PUT(
       )
       .run()
 
-    // Replace challenge questions if provided
-    if (questions && Array.isArray(questions)) {
+    // Replace challenge questions ONLY if new questions with actual content are provided
+    // Never delete existing questions when the field is empty/missing (e.g. editing just the letter)
+    if (questions && Array.isArray(questions) && questions.length > 0 && questions.some(q => q.question && q.answer)) {
       // Delete existing
       await db.prepare('DELETE FROM challenge_questions WHERE person_id = ?').bind(id).run()
 
