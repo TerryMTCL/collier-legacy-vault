@@ -47,12 +47,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const activationToken = crypto.randomUUID()
         const activationLink = `${process.env.APP_URL ?? 'https://collierlegacyvault.com'}/access/${activationToken}`
 
-        // Mark person as activated
+        // Mark person as activated — triggerer ALWAYS gets FULL access
         await db
           .prepare(
             `UPDATE people SET
               is_activated = 1,
               activated_at = datetime('now'),
+              access_tier = 'FULL',
               password_hash = ?,
               updated_at = datetime('now')
             WHERE id = ?`
@@ -71,8 +72,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           .bind(event.id)
           .run()
 
-        // Send email to triggering person
-        await sendAccessGrantedEmail(event.person_email, activationLink)
+        // Send email to triggering person — personal message if they have one
+        if (event.personal_email_message) {
+          await sendPersonalMessageEmail(event.person_email, event.personal_email_message, activationLink)
+        } else {
+          await sendAccessGrantedEmail(event.person_email, activationLink)
+        }
 
         // Send personal messages to ALL other authorized people
         const otherPeople = await db

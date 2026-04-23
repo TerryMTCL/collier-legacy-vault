@@ -319,15 +319,22 @@ export default function PeoplePage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1.5">
-                Personal Message <span className="text-gray-600">(optional)</span>
+                Personal Letter{' '}
+                <span className="text-gray-600 font-normal">(optional)</span>
               </label>
+              <p className="text-xs text-gray-500 mb-2">
+                This is the personal message that will be emailed to this person when the vault is activated.
+              </p>
               <textarea
                 value={formMessage}
                 onChange={(e) => setFormMessage(e.target.value)}
-                placeholder="A personal message to include in the notification email..."
-                rows={3}
-                className="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 resize-none"
+                placeholder="Write a personal message to this person..."
+                rows={15}
+                className="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 resize-y"
               />
+              <p className="text-xs text-gray-600 mt-1 text-right">
+                {formMessage.length.toLocaleString()} characters
+              </p>
             </div>
 
             <div>
