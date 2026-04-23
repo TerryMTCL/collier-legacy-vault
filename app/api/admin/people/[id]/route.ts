@@ -90,16 +90,19 @@ export async function PUT(
       )
       .run()
 
-    // Replace challenge questions ONLY if new questions with actual content are provided
-    // Never delete existing questions when the field is empty/missing (e.g. editing just the letter)
-    if (questions && Array.isArray(questions) && questions.length > 0 && questions.some(q => q.question && q.answer)) {
-      // Delete existing
+    // CRITICAL: Only touch challenge questions if EXPLICITLY replacing them with real new data
+    // A valid question requires BOTH question text AND a non-empty answer
+    const validNewQuestions = (questions ?? []).filter(
+      (q: { question?: string; answer?: string }) =>
+        q.question && q.question.trim().length > 0 && q.answer && q.answer.trim().length > 0
+    )
+
+    if (validNewQuestions.length > 0) {
+      // Only now is it safe to delete old questions, because we have real replacements
       await db.prepare('DELETE FROM challenge_questions WHERE person_id = ?').bind(id).run()
 
-      // Insert new
-      for (let i = 0; i < questions.length; i++) {
-        const q = questions[i]
-        if (!q.question || !q.answer) continue
+      for (let i = 0; i < validNewQuestions.length; i++) {
+        const q = validNewQuestions[i]
         const qId = crypto.randomUUID()
         const answerHash = await hashPassword(q.answer.trim().toLowerCase())
         await db
@@ -111,6 +114,7 @@ export async function PUT(
           .run()
       }
     }
+    // If no valid new questions provided, existing questions are UNTOUCHED
 
     const ip =
       request.headers.get('cf-connecting-ip') ??
