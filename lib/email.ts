@@ -9,7 +9,7 @@ function getResend(): Resend {
 }
 
 const ADMIN_EMAIL = 'joshua@middletnchristmaslights.com'
-const FROM_EMAIL = process.env.FROM_EMAIL ?? 'noreply@collierlegacyvault.com'
+const FROM_EMAIL = process.env.FROM_EMAIL ?? 'noreply@servicevaultpro.com'
 const APP_URL = process.env.APP_URL ?? 'https://collierlegacyvault.com'
 
 export async function sendSwitchTriggerEmail(personName: string, cancelLink: string): Promise<void> {
